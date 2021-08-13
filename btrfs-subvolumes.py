@@ -26,6 +26,66 @@ import sys
 import os
 import re
 
+# MAIN .....................................................
+
+def main():
+    get_args()
+    # Re-run the script as root if started with a non-priveleged account
+    if os.getuid() != 0:
+        cmd = 'sudo "' + '" "'.join(sys.argv) + '"'
+        sys.exit(subprocess.call(cmd, shell=True))
+
+
+    # Fetch command output to work with
+    output = get_data_raw(sys.argv[1:])
+    subvols = get_btrfs_subvols(guess_path_argument(sys.argv))
+
+    # Data for the new column
+    path_column = [
+        "path",
+        "----"
+    ]
+
+    # Iterate through all lines except for the table header
+    for index,line in enumerate(output):
+        # Ignore header rows
+        if index <= 1:
+            continue
+
+        groupid = get_qgroup_id(line)
+
+        if groupid in subvols:
+            path_column.append(subvols[groupid])
+        else:
+            path_column.append("")
+
+    # Find the required width for the new column
+    column_width = len(max(path_column, key=len)) + 2
+
+    # Output data with extra column for path
+    for index,line in enumerate(output):
+        if path_column[index]=="":
+            # We can't print anything useful for qgroups that aren't associated with a path
+            continue
+
+        print(path_column[index].ljust(column_width) + output[index])
+
+# Helper Functions..........................................
+
+def get_args():
+    if len(sys.argv) != 2: 
+        print("Incorrect number of arguments")
+        print_help()
+        sys.exit(1)
+    if sys.argv[1] in ["-h", "--help"]:
+        print_help()
+        sys.exit(0)
+    
+def print_help():
+    print(sys.argv[0]+"\t [path to btrfs subvol]\n")
+    print("qgroups will need to be enabled, these can be\n"+
+        "enabled with something like:\n\t sudo btrfs quota enable /mnt/@")
+
 def get_btrfs_subvols(path):
     """Return a dictionary of subvolume names indexed by their subvolume ID"""
     try:
@@ -92,42 +152,5 @@ def guess_path_argument(argv):
     return args[-1]
 
 
-# Re-run the script as root if started with a non-priveleged account
-if os.getuid() != 0:
-    cmd = 'sudo "' + '" "'.join(sys.argv) + '"'
-    sys.exit(subprocess.call(cmd, shell=True))
-
-
-# Fetch command output to work with
-output = get_data_raw(sys.argv[1:])
-subvols = get_btrfs_subvols(guess_path_argument(sys.argv))
-
-# Data for the new column
-path_column = [
-    "path",
-    "----"
-]
-
-# Iterate through all lines except for the table header
-for index,line in enumerate(output):
-    # Ignore header rows
-    if index <= 1:
-        continue
-
-    groupid = get_qgroup_id(line)
-
-    if groupid in subvols:
-        path_column.append(subvols[groupid])
-    else:
-        path_column.append("")
-
-# Find the required width for the new column
-column_width = len(max(path_column, key=len)) + 2
-
-# Output data with extra column for path
-for index,line in enumerate(output):
-    if path_column[index] is "":
-        # We can't print anything useful for qgroups that aren't associated with a path
-        continue
-
-    print(path_column[index].ljust(column_width) + output[index])
+if __name__ == "__main__":
+    main()
