@@ -73,7 +73,7 @@ def main():
 # Helper Functions..........................................
 
 def get_args():
-    if len(sys.argv) != 2: 
+    if len(sys.argv) < 2: 
         print("Incorrect number of arguments")
         print_help()
         sys.exit(1)
@@ -82,7 +82,9 @@ def get_args():
         sys.exit(0)
     
 def print_help():
-    print(sys.argv[0]+"\t [path to btrfs subvol]\n")
+    print(sys.argv[0]+"\t [OPTIONS] [path to btrfs subvol]\n")
+    print("Example\n")
+    print(sys.argv[0]+"\t --sort excl / \n")
     print("qgroups will need to be enabled, these can be\n"+
         "enabled with something like:\n\t sudo btrfs quota enable /mnt/@")
 
